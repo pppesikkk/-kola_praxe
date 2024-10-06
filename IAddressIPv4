@@ -1,0 +1,127 @@
+<?php
+interface IAddressIPv4
+{
+    public function __construct(string $address);
+    public function isValid(): bool;
+    public function set(string $address): IAddressIPv4;
+    public function getAsString(): string;
+    public function getAsInt(): int;
+    public function getAsBinaryString(): string;
+    public function getOctet(int $number): int;
+    public function getClass(): string;
+    public function isPrivate(): bool;
+}
+class AddressIPv4 implements IAddressIPv4
+{
+    private $address;
+
+    public function __construct(string $address)
+    {
+        $this->set($address);
+    }
+
+    public function isValid(): bool
+    {
+        $parts = explode('.', $this->address);
+        if (count($parts) !== 4) {
+            return false;
+        }
+
+        foreach ($parts as $part) {
+            if (!is_numeric($part) || (int)$part < 0 || (int)$part > 255) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public function set(string $address): IAddressIPv4
+    {
+        $this->address = $address;
+
+        if (!$this->isValid()) {
+            throw new InvalidArgumentException("Invalid IP address");
+        }
+
+        return $this;
+    }
+
+    public function getAsString(): string
+    {
+        return $this->address;
+    }
+
+    public function getAsInt(): int
+    {
+        $parts = explode('.', $this->address);
+        $intAddress = 0;
+
+        foreach ($parts as $part) {
+            $intAddress = ($intAddress << 8) + (int)$part;
+        }
+
+        return $intAddress;
+    }
+
+    public function getAsBinaryString(): string
+    {
+        $binaryString = sprintf('%032b', $this->getAsInt());
+        return implode('.', str_split($binaryString, 8));
+    }
+
+    public function getOctet(int $number): int
+    {
+        $parts = explode('.', $this->address);
+        if ($number < 1 || $number > 4) {
+            throw new InvalidArgumentException("Octet number must be between 1 and 4.");
+        }
+
+        return (int)$parts[$number - 1];
+    }
+
+    public function getClass(): string
+    {
+        $firstOctet = $this->getOctet(1);
+
+        if ($firstOctet >= 1 && $firstOctet <= 127) {
+            return 'A';
+        } elseif ($firstOctet >= 128 && $firstOctet <= 191) {
+            return 'B';
+        } elseif ($firstOctet >= 192 && $firstOctet <= 223) {
+            return 'C';
+        } elseif ($firstOctet >= 224 && $firstOctet <= 239) {
+            return 'D';
+        } else {
+            return 'E';
+        }
+    }
+
+    public function isPrivate(): bool
+    {
+        $firstOctet = $this->getOctet(1);
+        $secondOctet = $this->getOctet(2);
+
+        if ($firstOctet === 10) {
+            return true;
+        } elseif ($firstOctet === 172 && $secondOctet >= 16 && $secondOctet <= 31) {
+            return true;
+        } elseif ($firstOctet === 192 && $secondOctet === 168) {
+            return true;
+        }
+
+        return false;
+    }
+}
+
+// zkouška fukčnosti
+try {
+    $ip1 = new AddressIPv4("127.168.1.1");
+    echo "IP Address: " . $ip1->getAsString() . "\n";
+    echo "Integer: " . $ip1->getAsInt() . "\n";
+    echo "Binary String: " . $ip1->getAsBinaryString() . "\n";
+    echo "Selected Octet: " . $ip1->getOctet(2) . "\n";
+    echo "Class: " . $ip1->getClass() . "\n";
+    echo "Private: " . ($ip1->isPrivate() ? "True" : "False") . "\n";
+} catch (InvalidArgumentException $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+}
